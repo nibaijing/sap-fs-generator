@@ -8,6 +8,16 @@ export async function generateFSDocument(
   userRequest: string,
   templateContent?: string
 ): Promise<string> {
+  // 模拟模式
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === '') {
+    return `[MOCK FS DOCUMENT]
+1. 文档概述: 关于 ${userRequest.substring(0, 20)}... 的功能规格说明。
+2. 业务背景: 用户请求生成基于 "${userRequest}" 的 SAP 功能。
+3. 功能描述: 这是一个模拟生成的功能文档。
+4. 参考模板: ${templateContent ? '已参考上传的模板内容' : '未提供模板'}
+5. 状态: 模拟成功。`;
+  }
+
   const systemPrompt = `你是SAP FS（功能规格）文档生成专家。
 
 根据用户需求，生成专业的功能规格文档。文档需要包含：
