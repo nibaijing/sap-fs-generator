@@ -1,23 +1,34 @@
-import OpenAI from 'openai';
+import { spawn } from 'child_process';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+async function callGeminiCLI(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const gemini = spawn('gemini', ['--no-interactive', 'prompt', '--', prompt]);
+
+    let output = '';
+    let error = '';
+
+    gemini.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    gemini.stderr.on('data', (data) => {
+      error += data.toString();
+    });
+
+    gemini.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Gemini CLI exited with code ${code}: ${error}`));
+      } else {
+        resolve(output.trim());
+      }
+    });
+  });
+}
 
 export async function generateFSDocument(
   userRequest: string,
   templateContent?: string
 ): Promise<string> {
-  // 模拟模式
-  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === '') {
-    return `[MOCK FS DOCUMENT]
-1. 文档概述: 关于 ${userRequest.substring(0, 20)}... 的功能规格说明。
-2. 业务背景: 用户请求生成基于 "${userRequest}" 的 SAP 功能。
-3. 功能描述: 这是一个模拟生成的功能文档。
-4. 参考模板: ${templateContent ? '已参考上传的模板内容' : '未提供模板'}
-5. 状态: 模拟成功。`;
-  }
-
   const systemPrompt = `你是SAP FS（功能规格）文档生成专家。
 
 根据用户需求，生成专业的功能规格文档。文档需要包含：
@@ -31,18 +42,33 @@ export async function generateFSDocument(
 8. 验收标准
 
 如果用户上传了模板，请参考模板格式。
-
 请用中文回复。`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userRequest },
-      ...(templateContent ? [{ role: 'user', content: `参考模板内容：${templateContent}` }] : []),
-    ],
-    temperature: 0.7,
-  });
+  const fullPrompt = `${systemPrompt}
 
-  return response.choices[0]?.message?.content || '生成失败';
+用户需求: ${userRequest}
+${templateContent ? `参考模板内容: ${templateContent}` : ''}`;
+
+  try {
+    const result = await callGeminiCLI(fullPrompt);
+    return result || '生成失败：Gemini CLI 返回空结果';
+  } catch (error) {
+    console.error('Gemini CLI Error:', error);
+    
+    // 如果 CLI 调用失败，返回 Mock 数据
+    return `[MOCK FS DOCUMENT - CLI 调用失败]
+错误信息: ${error instanceof Error ? error.message : String(error)}
+
+用户需求: ${userRequest.substring(0, 50)}...
+
+请检查：
+1. 是否已安装 gemini-cli: npm install -g @google/gemini-cli
+2. 是否已登录: gemini login
+3. CLI 是否能正常使用: gemini "你好"
+
+这是备用 Mock 输出：
+1. 文档概述: 关于 ${userRequest.substring(0, 20)}...
+2. 业务背景: 用户请求生成 SAP 功能
+3. 状态: Mock 模式（请配置 CLI）`;
+  }
 }

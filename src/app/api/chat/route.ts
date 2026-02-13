@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateFSDocument } from '@/lib/openai';
+import { generateWithAI } from '@/lib/ai/adapters';
+import { defaultAIConfig } from '@/lib/ai/config';
 import { parseFile } from '@/lib/file-parser';
 import { ChatRequest, Message } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
     const body: ChatRequest = await req.json();
-    const { message, files = [], history = [] } = body;
+    const { message, files = [], aiConfig } = body;
+    const config = aiConfig || defaultAIConfig;
 
     // 解析已上传的文件
     let templateContent = '';
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 调用 AI 生成文档
-    const content = await generateFSDocument(message, templateContent);
+    const content = await generateWithAI(message, config, templateContent);
 
     // 构建回复
     const assistantMessage: Message = {

@@ -1,3 +1,5 @@
+import { AIConfig } from '@/lib/ai/config';
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -17,4 +19,5 @@ export interface ChatRequest {
   message: string;
   files?: UploadedFile[];
   history?: Message[];
+  aiConfig?: AIConfig;
 }

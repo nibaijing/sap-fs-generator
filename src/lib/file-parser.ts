@@ -1,18 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import mammoth from 'mammoth';
 import ExcelJS from 'exceljs';
 import { UploadedFile } from '@/types';
 
 export async function parseFile(file: UploadedFile): Promise<string | object> {
-  // 模拟解析，如果库还没装好
   try {
+    const buffer = Buffer.from(file.content as string, 'base64');
+    
     if (file.type === 'docx') {
-      // 解析 DOCX
-      const result = await mammoth.extractRawText({ buffer: Buffer.from(file.content as string, 'base64') });
+      const result = await mammoth.extractRawText({ buffer: buffer as any });
       return result.value;
     } else if (file.type === 'xlsx') {
-      // 解析 Excel
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(Buffer.from(file.content as string, 'base64'));
+      await workbook.xlsx.load(buffer as any);
       const data: Record<string, any>[] = [];
 
       workbook.eachSheet((worksheet) => {
@@ -25,7 +25,7 @@ export async function parseFile(file: UploadedFile): Promise<string | object> {
 
       return data;
     }
-  } catch (e) {
+  } catch {
     return `[MOCK PARSED CONTENT for ${file.name}] 这是模拟的文件解析内容。`;
   }
   return '';
